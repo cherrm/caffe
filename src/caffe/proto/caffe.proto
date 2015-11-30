@@ -491,11 +491,6 @@ message ContrastiveLossParameter {
   optional bool legacy_version = 2 [default = false];
 }
 
-message TripletLossParameter {
-  // margin for dissimilar pair
-  optional float margin = 1 [default = 1.0];
-}
-
 message ConvolutionParameter {
   optional uint32 num_output = 1; // The number of outputs for the layer
   optional bool bias_term = 2 [default = true]; // whether to have bias terms
