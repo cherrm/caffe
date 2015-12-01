@@ -239,14 +239,14 @@ public:
 	}
 
 protected:
-	/// @copydoc ContrastiveLossLayer
+	/// @copydoc MaxMarginLossLayer
 	virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 		const vector<Blob<Dtype>*>& top);
 	/*virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 		const vector<Blob<Dtype>*>& top);*/
 
 	/**
-	* @brief Computes the Contrastive error gradient w.r.t. the inputs.
+	* @brief Computes the max margin hinge loss error gradient w.r.t. the inputs.
 	*
 	* Computes the gradients with respect to the two input vectors (bottom[0] and
 	* bottom[1]), but not the similarity label (bottom[2]).
@@ -281,9 +281,8 @@ protected:
 	Blob<Dtype> dist_sq_;  // cached for backward pass
 	Blob<Dtype> diff_sq_;  // tmp storage for gpu forward pass
 	Blob<Dtype> summer_vec_;  // tmp storage for gpu forward pass
-	Dtype margin = 1.0;
-	Dtype b = 1.0;
-	Dtype c = 0.01;
+	Dtype b;
+	Dtype c;
 };
 
 /**

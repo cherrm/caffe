@@ -21,6 +21,8 @@ namespace caffe
 		summer_vec_.Reshape(bottom[0]->channels(), 1, 1, 1);
 		for (int i = 0; i < bottom[0]->channels(); ++i)
 			summer_vec_.mutable_cpu_data()[i] = Dtype(1);
+		b = this->layer_param_.max_margin_loss_param().b();
+		c = this->layer_param_.max_margin_loss_param().c();
 	}
 
 	template <typename Dtype>
@@ -34,7 +36,7 @@ namespace caffe
 			bottom[1]->cpu_data(),  // b
 			diff_.mutable_cpu_data());  // a_i-b_i
 		const int channels = bottom[0]->channels();
-
+		Dtype margin = this->layer_param_.max_margin_loss_param().margin();
 		Dtype loss(0.0);
 		for (int i = 0; i < bottom[0]->num(); ++i) {
 			dist_sq_.mutable_cpu_data()[i] = caffe_cpu_dot(channels,
@@ -56,7 +58,6 @@ namespace caffe
 	template <typename Dtype>
 	void MaxMarginLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 		const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-
 		for (int i = 0; i < 2; ++i) {
 			if (propagate_down[i]) {
 				const Dtype sign = (i == 0) ? 1 : -1;
@@ -75,8 +76,7 @@ namespace caffe
 					}
 					if (yij * (b - dist_sq_.cpu_data()[j]) <= Dtype(1.0)) {
 						Dtype scalar = alpha * (2.0) * yij;
-						b -= alpha * yij * c /*/
-					static_cast<Dtype>(bottom[i]->num())*/;
+						b += alpha * yij * c;
 						caffe_cpu_axpby(
 							channels,
 							scalar,
