@@ -58,6 +58,13 @@ namespace caffe
 	template <typename Dtype>
 	void MaxMarginLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 		const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
+		Dtype margin = this->layer_param_.max_margin_loss_param().margin();
+		int changed = 0;
+		int unchanged = 0;
+		int similar = 0;
+		Dtype simAvg = 0;
+		Dtype dissimAvg = 0;
+		int dissimilar = 0;
 		for (int i = 0; i < 2; ++i) {
 			if (propagate_down[i]) {
 				const Dtype sign = (i == 0) ? 1 : -1;
@@ -70,11 +77,15 @@ namespace caffe
 					Dtype yij;
 					if (static_cast<int>(bottom[2]->cpu_data()[j])) {  // similar pairs
 						yij = 1;
+						similar++;
+						simAvg += dist_sq_.cpu_data()[j];
 					}
 					else {  // dissimilar pairs
 						yij = -1;
+						dissimilar++;
+						dissimAvg += dist_sq_.cpu_data()[j];
 					}
-					if (yij * (b - dist_sq_.cpu_data()[j]) <= Dtype(1.0)) {
+					if (yij * (b - dist_sq_.cpu_data()[j]) <= margin) {
 						Dtype scalar = alpha * (2.0) * yij;
 						b += alpha * yij * c;
 						caffe_cpu_axpby(
@@ -83,13 +94,19 @@ namespace caffe
 							diff_.cpu_data() + (j*channels),
 							Dtype(0.0),
 							bout + (j*channels));
+						changed++;
 					}
 					else {
 						caffe_set(channels, Dtype(0), bout + (j*channels));
+						unchanged++;
 					}
 				}
 			}
 		}
+		std::cout << "Changed: " << changed << ", Unchanged: " << unchanged << ", Similar: " << similar
+				<< ", Dissimilar: " << dissimilar << " B: " << b <<std::endl;
+		std::cout << "SimAvg: " << simAvg / (Dtype) bottom[0]->num() << " Dissim: "
+				<< dissimAvg / (Dtype) bottom[0]->num() << std::endl;
 	}
 
 	INSTANTIATE_CLASS(MaxMarginLossLayer);

@@ -226,7 +226,7 @@ public:
 	virtual inline int ExactNumBottomBlobs() const { return 3; }
 	virtual inline const char* type() const { return "MaxMarginLoss"; }
 	/**
-	* Unlike most loss layers, in the ContrastiveLossLayer we can backpropagate
+	* Unlike most loss layers, in the MaxMarginLossLayer we can backpropagate
 	* to the first two inputs.
 	*/
 	virtual inline bool AllowForceBackward(const int bottom_index) const {
