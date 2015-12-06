@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <algorithm>
 #include <vector>
 
 #include "caffe/loss_layers.hpp"
@@ -51,10 +50,8 @@ void TripletLossLayer<Dtype>::Forward_cpu(
         bottom[0]->cpu_data(),         // a
         bottom[2]->cpu_data(),         // n
         diff_a_n_.mutable_cpu_data()); // a-n
-
     const int channels = bottom[0]->channels();
     Dtype margin = this->layer_param_.triplet_loss_param().margin();
-
     Dtype loss(0.0);
     for (int i = 0; i < bottom[0]->num(); ++i) {
         loss_.mutable_cpu_data()[i] = std::max<Dtype>(
