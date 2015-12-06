@@ -497,9 +497,9 @@ message MaxMarginLossParameter {
   // margin for dissimilar pair
   optional float margin = 1 [default = 1.0];
   // a learnt threshold for the max margin hinge loss function
-  optional float b = 2 [default = 5.0];
+  optional float b = 2 [default = 25.0];
   // gradient constant for the threshold value
-  optional float c = 3 [default = 3.0];
+  optional float c = 3 [default = 0.025];
 }
 
 message TripletLossParameter {
