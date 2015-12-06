@@ -306,11 +306,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-<<<<<<< HEAD
 // LayerParameter next available layer-specific ID: 142 (last added: triplet_loss_param)
-=======
-// LayerParameter next available layer-specific ID: 141 (last added: max_margin_loss_param)
->>>>>>> master
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -506,14 +502,11 @@ message MaxMarginLossParameter {
   optional float c = 3 [default = 3.0];
 }
 
-<<<<<<< HEAD
 message TripletLossParameter {
   // margin for dissimilar pair
   optional float margin = 1 [default = 0.2];
 }
 
-=======
->>>>>>> master
 message ConvolutionParameter {
   optional uint32 num_output = 1; // The number of outputs for the layer
   optional bool bias_term = 2 [default = true]; // whether to have bias terms
