@@ -16,10 +16,8 @@ import math
 class NetDataset:    
     # parameters
     imgFormat = 'png'
-    performMeanSubtraction = False
-    #scalingFactor = 1.0/255.0    
-    batchSize = 5
-    facesPerIdentity = 5
+    batchSize = 1280
+    facesPerIdentity = 40
     nNegativeScale = 1.0 # number of negative candidates to chose from
 
     flipAugmentation = True
@@ -29,21 +27,12 @@ class NetDataset:
     
     # data
     data = None         # list of image data
-    dataMean = None     # image data mean
-    labels = None       # label for each item in image data list
-    posPairs = None     # all possible pairs of items from the same class without self-pairs (positives), random order
-    negPairs = None     # set of pairs of items from different class (negatives), random order
     imageIdxRanges = None
     
     # internal attributes
     classPointer = 0
     loops = 0
-
-    posPointer = 0
-    negPointer = 0
-    epoch = 0
-    
-    
+        
     ###################
     ### public methods
     ###################
@@ -108,9 +97,9 @@ class NetDataset:
             self.imageIdxRanges = imageIdxRanges
                 
             # save data to disk for faster load on the next call
-            #np.save('{:s}/data.npy'.format(path), self.data)
-            #np.save('{:s}/classes.npy'.format(path), self.classes)
-            #np.save('{:s}/imageIdxRanges.npy'.format(path), self.imageIdxRanges)
+            np.save('{:s}/data.npy'.format(path), self.data)
+            np.save('{:s}/classes.npy'.format(path), self.classes)
+            np.save('{:s}/imageIdxRanges.npy'.format(path), self.imageIdxRanges)
         
     # Prepares the next batch for the given data
     # return: (netData, netLabels)
@@ -127,8 +116,6 @@ class NetDataset:
         currentNAnchorPositives = 0;
 
         anchorPositives = []
-
-        labels = None       # label for each item in image data list
 
         while (currentNAnchorPositives < self.batchSize):
             clazz = self.classes[self.classPointer]
