@@ -43,20 +43,19 @@ def plotStats(trainLoss, testAcc, figure=None):
 
 ### task: train siamese network in python
 # parameters
-dataFolder = './db'
 solverDef = 'lrfacenet-solver-32.prototxt'
 
-gpu = False 
+gpu = False
 imgDim = 32  # width and height of image
 
 nTrainIter = 500
-testInterval = 100
+testInterval = 20
 nTestBatches = 10
 
 
 # make settings
-dataFolderTrain = dataFolder + '/train'
-dataFolderTest = dataFolder + '/test'
+dataFolderTrain = '/Users/matthiasstumpp/Workspace/caffe_own/data/facescrub/padded-32/train'
+dataFolderTest = '/Users/matthiasstumpp/Workspace/caffe_own/data/facescrub/padded-32/test'
 if gpu:
     caffe.set_mode_gpu()
     print('GPU mode')
@@ -97,7 +96,7 @@ for k, v in solver.net.params.items():
 ### step 3: train net with dynamically created data
 print('{:s} - Training'.format(str(datetime.datetime.now()).split('.')[0]))
 
-# loss and accuracy will be stored in the log
+# # loss and accuracy will be stored in the log
 trainLoss = np.zeros(nTrainIter+1)
 testAcc = np.zeros(int(np.ceil(nTrainIter / testInterval))+1)
 
@@ -105,6 +104,7 @@ testAcc = np.zeros(int(np.ceil(nTrainIter / testInterval))+1)
 testNetData, testNetLabels = testDataset.getNextVerficationBatch()
 solver.test_nets[0].set_input_arrays(testNetData, testNetLabels)
 for trainIter in range(nTrainIter+1):
+    print('{:s} - Iteration {:d}'.format(str(datetime.datetime.now()).split('.')[0], trainIter))
     netData, netLabels = trainDataset.getNextVerficationBatch()
     solver.net.set_input_arrays(netData, netLabels)
     solver.step(1)  # SGD by Caffe
@@ -116,13 +116,13 @@ for trainIter in range(nTrainIter+1):
     if (math.isnan(trainLoss[trainIter])):
        break
         
-    # run a full test every so often
-    # Caffe can also do this for us and write to a log, but we show here
-    # how to do it directly in Python, where more complicated things are easier.
+    #run a full test every so often
+    #Caffe can also do this for us and write to a log, but we show here
+    #how to do it directly in Python, where more complicated things are easier.
     if (trainIter % testInterval == 0):
         print('{:s} - Iteration {:d} - Loss {:.4f} - Testing'.format(str(datetime.datetime.now()).split('.')[0], trainIter, trainLoss[trainIter]))
-        distancesAnchorPositives = []
-        distancesAnchorNegatives = []
+        labels = []
+        distances = []
                 
         # testing with memory interface
         # collect test results
@@ -137,20 +137,24 @@ for trainIter in range(nTrainIter+1):
             ft1 = solver.test_nets[0].blobs['feat'].data
             ft2 = solver.test_nets[0].blobs['feat_p'].data
             ft3 = solver.test_nets[0].blobs['feat_pp'].data
-            
+
             curDist = np.sum((ft1 - ft2)**2, axis=1) # euclidean distance between anchor and positive
-            distancesAnchorPositives = np.concatenate((distancesAnchorPositives, curDist))    
+            labels = np.concatenate((labels, np.ones((len(testNetData)), dtype=np.float32)))
+            distances = np.concatenate((distances, curDist))    
+
             curDist = np.sum((ft1 - ft3)**2, axis=1) # euclidean distance between anchor and negative
-            distancesAnchorNegatives = np.concatenate((distancesAnchorNegatives, curDist))    
+            labels = np.concatenate((labels, np.zeros((len(testNetData)), dtype=np.float32)))
+            distances = np.concatenate((distances, curDist))    
     
         # search for best threshold and use that accuracy
         bestAccuracy = -float('inf')
-        for i in range(len(distancesAnchorPositives)):
-            curThresh = distancesAnchorPositives[i]
-            prediction = distancesAnchorPositives <= curThresh
-            accuracy = np.mean(prediction == distancesAnchorPositives)
+        for i in range(len(labels)):
+            curThresh = distances[i]
+            prediction = distances <= curThresh
+            accuracy = np.mean(prediction == labels)
             if (accuracy > bestAccuracy):
                 bestAccuracy = accuracy
+                thresh = curThresh  
     
         testAcc[trainIter // testInterval] = bestAccuracy
         print('                      accuracy: {:.3f}'.format(bestAccuracy))        
