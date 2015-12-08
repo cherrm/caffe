@@ -10,7 +10,6 @@ template <typename Dtype>
 void TripletLossLayer<Dtype>::LayerSetUp(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
     LossLayer<Dtype>::LayerSetUp(bottom, top);
-
     CHECK_EQ(bottom[0]->channels(), bottom[1]->channels());
     CHECK_EQ(bottom[0]->channels(), bottom[2]->channels());
     CHECK_EQ(bottom[0]->height(), 1); // a
