@@ -16,7 +16,7 @@ import math
 class NetDataset:    
     # parameters
     imgFormat = 'png'
-    batchSize = 1280
+    batchSize = 1560
     facesPerIdentity = 40
     nNegativeScale = 1.0 # number of negative candidates to chose from
 

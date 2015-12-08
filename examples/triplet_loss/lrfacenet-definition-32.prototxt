@@ -10,7 +10,7 @@ layer {
     phase: TRAIN
   }
   memory_data_param {
-    batch_size: 10
+    batch_size: 1560
     channels: 3
     height: 32
     width: 32
@@ -55,7 +55,7 @@ layer {
     phase: TEST
   }
   memory_data_param {
-    batch_size: 10
+    batch_size: 1560
     channels: 3
     height: 32
     width: 32
