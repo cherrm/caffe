@@ -114,7 +114,6 @@ class NetDataset:
     def getNextVerficationBatch(self):
 
         currentNAnchorPositives = 0;
-
         anchorPositives = []
 
         while (currentNAnchorPositives < self.batchSize):
@@ -136,7 +135,6 @@ class NetDataset:
             #np.random.shuffle(elems) 
             anchorPositivesCurrent = np.asarray([p for p in itertools.combinations(elems, 2)], dtype=np.int32)
             anchorPositives.extend(anchorPositivesCurrent)
-
             currentNAnchorPositives += len(anchorPositivesCurrent)
 
             if self.classPointer == len(self.classes)-1:
@@ -144,6 +142,10 @@ class NetDataset:
                 self.loops += 1
             else:
                 self.classPointer += 1
+
+        # adjust 
+        currentNAnchorPositives = self.batchSize
+        anchorPositives = anchorPositives[:int(self.batchSize)]
 
         # remove duplicates
         anchors = tuple(x[0] for x in anchorPositives)
