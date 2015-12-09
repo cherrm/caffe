@@ -53,11 +53,9 @@ void TripletLossLayer<Dtype>::Forward_cpu(
     Dtype margin = this->layer_param_.triplet_loss_param().margin();
     Dtype loss(0.0);
     for (int i = 0; i < bottom[0]->num(); ++i) {
-        loss_.mutable_cpu_data()[i] = std::max<Dtype>(
-            caffe_cpu_dot(channels, diff_a_p_.cpu_data() + (i * channels), diff_a_p_.cpu_data() + (i * channels))
-            - caffe_cpu_dot(channels, diff_a_n_.cpu_data() + (i * channels), diff_a_n_.cpu_data() + (i * channels))
-            + margin, Dtype(0.0));
-        loss += loss_.cpu_data()[i];
+        loss_.mutable_cpu_data()[i] = caffe_cpu_dot(channels, diff_a_p_.cpu_data() + (i * channels), diff_a_p_.cpu_data() + (i * channels))
+            - caffe_cpu_dot(channels, diff_a_n_.cpu_data() + (i * channels), diff_a_n_.cpu_data() + (i * channels)) + margin; // Todo(ms): rename "loss" to "dist" or something
+        loss += std::max<Dtype>(loss_.cpu_data()[i], Dtype(0.0));
     }
     loss /= static_cast<Dtype>(bottom[0]->num());
     top[0]->mutable_cpu_data()[0] = loss;

@@ -51,11 +51,9 @@ void TripletLossLayer<Dtype>::Forward_gpu(
     Dtype margin = this->layer_param_.triplet_loss_param().margin();
     Dtype loss(0.0);
     for (int i = 0; i < bottom[0]->num(); ++i) {
-        loss_.mutable_cpu_data()[i] = std::max<Dtype>(
-            dist_sq_a_p_.cpu_data()[i]
-            - dist_sq_a_n_.cpu_data()[i]
-            + margin, Dtype(0.0));
-        loss += loss_.cpu_data()[i];
+        loss_.mutable_cpu_data()[i] = dist_sq_a_p_.cpu_data()[i]
+            - dist_sq_a_n_.cpu_data()[i] + margin;
+        loss += std::max<Dtype>(loss_.cpu_data()[i], Dtype(0.0));
     }
     loss /= static_cast<Dtype>(bottom[0]->num());
     top[0]->mutable_cpu_data()[0] = loss;
