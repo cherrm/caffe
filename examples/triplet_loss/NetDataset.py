@@ -59,21 +59,19 @@ class NetDataset:
             # read all images and create positive pairs
             if (self.printStatus):
                 print('{:s} - Read images and create anchor/positive pairs'.format(str(datetime.datetime.now()).split('.')[0]))
+
             data = []
             classId = 0
             classes = []
 
             imageIdxOffset = 0
             imageIdxRanges = []
-            imageIdxLast = 0
 
             for sd in subdirs:
                 # get folder name and images
                 curDir = path + '/' + sd    
                 pData = [self.loadImage(imgName) for imgName in sorted(glob.glob(curDir + '/*.' + self.imgFormat))]  
                 
-                imageIdxOffset = 0 if len(classes) == 0 else imageIdxLast
-
                 for i in range(len(pData)):
                     imageIdxRanges.append([imageIdxOffset, imageIdxOffset+len(pData)-1])
 
@@ -81,7 +79,7 @@ class NetDataset:
                 np.random.shuffle(elems)
                 classes.append(elems)
 
-                imageIdxLast = len(pData)
+                imageIdxOffset += len(pData)
     
                 # collect data and labels                
                 data = data + pData
