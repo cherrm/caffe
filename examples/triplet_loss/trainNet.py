@@ -45,11 +45,11 @@ def plotStats(trainLoss, testAcc, figure=None):
 # parameters
 solverDef = 'lrfacenet-solver-32.prototxt'
 
-gpu = False
+gpu = True
 imgDim = 32  # width and height of image
 
-nTrainIter = 500
-testInterval = 20
+nTrainIter = 50000
+testInterval = 100
 nTestBatches = 10
 
 
@@ -114,7 +114,8 @@ for trainIter in range(nTrainIter+1):
     
     # abort if training diverged
     if (math.isnan(trainLoss[trainIter])):
-       break
+        print "training diverged"
+        break
         
     #run a full test every so often
     #Caffe can also do this for us and write to a log, but we show here

@@ -16,8 +16,8 @@ import math
 class NetDataset:    
     # parameters
     imgFormat = 'png'
-    batchSize = 1560
-    facesPerIdentity = 40
+    batchSize = 380
+    facesPerIdentity = 20
     nNegativeScale = 1.0 # number of negative candidates to chose from
 
     flipAugmentation = True
@@ -72,6 +72,9 @@ class NetDataset:
                 curDir = path + '/' + sd    
                 pData = [self.loadImage(imgName) for imgName in sorted(glob.glob(curDir + '/*.' + self.imgFormat))]  
                 
+                if len(pData) == 0:
+                    continue
+
                 for i in range(len(pData)):
                     imageIdxRanges.append([imageIdxOffset, imageIdxOffset+len(pData)-1])
 
@@ -114,6 +117,8 @@ class NetDataset:
         currentNAnchorPositives = 0;
         anchorPositives = []
 
+        toRemoveFromNegatives = []
+
         while (currentNAnchorPositives < self.batchSize):
             clazz = self.classes[self.classPointer]
 
@@ -132,8 +137,12 @@ class NetDataset:
 
             #np.random.shuffle(elems) 
             anchorPositivesCurrent = np.asarray([p for p in itertools.combinations(elems, 2)], dtype=np.int32)
+
             anchorPositives.extend(anchorPositivesCurrent)
             currentNAnchorPositives += len(anchorPositivesCurrent)
+
+            #setup array with negatives
+            toRemoveFromNegatives.extend(range(self.imageIdxRanges[clazz[0]][0], self.imageIdxRanges[clazz[0]][1]+1))
 
             if self.classPointer == len(self.classes)-1:
                 self.classPointer = 0
@@ -141,19 +150,11 @@ class NetDataset:
             else:
                 self.classPointer += 1
 
-        # adjust 
+        # ensure we have the correct batchsize
         currentNAnchorPositives = self.batchSize
         anchorPositives = anchorPositives[:int(self.batchSize)]
 
-        # remove duplicates
-        anchors = tuple(x[0] for x in anchorPositives)
-        anchors = list(set(anchors))
-
-        # retrieve images which cannot be used as negatives because they are same identity as anchors
-        toRemoveFromNegatives = []
-        for a in anchors:
-            toRemoveFromNegatives.extend(range(self.imageIdxRanges[a][0], self.imageIdxRanges[a][1]+1))
-        negativeCands = [x for x in range(0, len(self.imageIdxRanges)) if x not in list(set(toRemoveFromNegatives))]  
+        negativeCands = [x for x in range(0, len(self.imageIdxRanges)) if x not in toRemoveFromNegatives]  
 
         np.random.shuffle(negativeCands) 
         nNegatives = math.ceil(len(anchorPositives) * self.nNegativeScale)
