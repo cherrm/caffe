@@ -179,7 +179,7 @@ void LocallyConnectedLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
         	width_, kernel_size_, kernel_size_,
         	pad_, pad_, stride_, stride_, col_data);
 
-    	// gradient wrt weight
+    	// gradient w.r.t. weight
     	for (int m = 0; m < num_output_; m++) {
       		Dtype* filter_weight_diff = weight_diff+this->blobs_[0]->offset(m);
       		for (int k = 0; k < K_; k++) {
@@ -190,7 +190,7 @@ void LocallyConnectedLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
           Dtype(1.0), filter_weight_diff);
     	}
 
-    	// gradient wrt bottom data
+    	// gradient w.r.t. bottom data
     	if (propagate_down[0]) {
       		caffe_set(col_buffer_.count(), Dtype(0.0), col_diff);
       	for (int m = 0; m < num_output_; m++) {
