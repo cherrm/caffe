@@ -14,25 +14,27 @@ import math
     
 # Class that handles image loading, batch preparation and stuff.
 class NetDataset:    
-    # parameters
-    imgFormat = 'png'
-    batchSize = 380
-    facesPerIdentity = 20
-    nNegativeScale = 1.0 # number of negative candidates to chose from
 
-    flipAugmentation = True
-    shiftAugmentation = True
-    targetSize = None
-    printStatus = True
+    def __init__(self):
+        # parameters
+        self.imgFormat = 'png'
+        self.batchSize = 380
+        self.facesPerIdentity = 20
+
+        self.flipAugmentation = True
+        self.shiftAugmentation = True
+        self.targetSize = None
+        self.printStatus = True
     
-    # data
-    data = None         # list of image data
-    imageIdxRanges = None
-    
-    # internal attributes
-    classPointer = 0
-    loops = 0
-        
+        # data
+        self.data = None         # list of image data
+        self.posData1 = None
+        self.posData2 = None
+        self.posData3 = None  
+
+        self.epoch = 0
+        self.batchCount = 0
+
     ###################
     ### public methods
     ###################
@@ -40,68 +42,147 @@ class NetDataset:
     # Loads images from disk. Assumes a path/class1/img1.ext structure.
     # return: -
     def loadImageData(self, path):
+                
+        # get all class subfolders
+        subdirs = next(os.walk(path))[1]
         
-        if (os.path.isfile(path + '/data.npy') and
-            os.path.isfile(path + '/classes.npy') and
-            os.path.isfile(path + '/imageIdxRanges.npy')):
-                
-            # found previously saved chunk files, use them because loading is significantly faster this way
-            self.data = np.load(path + '/data.npy')
-            self.classes = np.load(path + '/classes.npy')
-            self.imageIdxRanges = np.load(path + '/imageIdxRanges.npy')
+        # read all images and create positive pairs
+        if (self.printStatus):
+            print('{:s} - Read images and create anchor/positive pairs'.format(str(datetime.datetime.now()).split('.')[0]))
+
+        data = []
+        classId = 0
+        classes = []
+        imageIdxOffset = 0
+        imageIdxRanges = []
+
+        for sd in subdirs:
+            # get folder name and images
+            curDir = path + '/' + sd    
+            pData = [self.loadImage(imgName) for imgName in sorted(glob.glob(curDir + '/*.' + self.imgFormat))]  
             
-        else:
-            # build dataset from scratch using the single images
+            if len(pData) == 0:
+                continue
+
+            for i in range(len(pData)):
+                imageIdxRanges.append([imageIdxOffset, imageIdxOffset+len(pData)-1])
+
+            elems = range(imageIdxOffset, imageIdxOffset+len(pData))
+            np.random.shuffle(elems)
+            classes.append(elems)
+
+            imageIdxOffset += len(pData)
+
+            # collect data and labels                
+            data = data + pData
+
+            # move to next class
+            classId += 1
+
+        # shuffle positive pairs for more stable training 
+        np.random.shuffle(classes) 
+
+        assert (self.batchSize <= len(data)) 
+        self.data = np.transpose(np.asarray(data), (0,3,1,2))
             
-            # get all class subfolders
-            subdirs = next(os.walk(path))[1]
-            
-            # read all images and create positive pairs
-            if (self.printStatus):
-                print('{:s} - Read images and create anchor/positive pairs'.format(str(datetime.datetime.now()).split('.')[0]))
+        currentNAnchorPositives = 0
+        anchorPositives = []
+        toRemoveFromNegatives = []
+        foundInLoop = False
+        fill = False
+        run = True
+        classPointer = 0
+        classOfRest = 0
+        rest = [] # rest of anchor positive pairs in set of combinations not used in current loop
+        loops = 0
 
-            data = []
-            classId = 0
-            classes = []
+        posData1 = []
+        posData2 = []
+        posData3 = []  
 
-            imageIdxOffset = 0
-            imageIdxRanges = []
+        while run:
+            while (currentNAnchorPositives < self.batchSize):
 
-            for sd in subdirs:
-                # get folder name and images
-                curDir = path + '/' + sd    
-                pData = [self.loadImage(imgName) for imgName in sorted(glob.glob(curDir + '/*.' + self.imgFormat))]  
-                
-                if len(pData) == 0:
-                    continue
+                start = -1
 
-                for i in range(len(pData)):
-                    imageIdxRanges.append([imageIdxOffset, imageIdxOffset+len(pData)-1])
+                if len(rest) != 0:
+                    clazz = classes[classOfRest]
+                    if self.batchSize-currentNAnchorPositives >= len(rest):
+                        anchorPositives.extend(rest)
+                        rest = []
+                        classOfRest = 0
+                    else:
+                        anchorPositives.extend(rest[:int(self.batchSize-currentNAnchorPositives)])
+                        del rest[int(self.batchSize-currentNAnchorPositives):]
+                    currentNAnchorPositives += len(anchorPositives)
+                    toRemoveFromNegatives.extend(range(imageIdxRanges[clazz[0]][0], imageIdxRanges[clazz[0]][1]+1))
 
-                elems = range(imageIdxOffset, imageIdxOffset+len(pData))
-                np.random.shuffle(elems)
-                classes.append(elems)
+                if currentNAnchorPositives < self.batchSize:
+                    elems = []
+                    clazz = classes[classPointer]
+                    if self.facesPerIdentity != 0:
+                        start = loops * self.facesPerIdentity if loops * self.facesPerIdentity < len(clazz) else -1
+                        if start != -1:
+                            foundInLoop = True
+                            offset = self.facesPerIdentity if start + self.facesPerIdentity-1 < len(clazz) else len(clazz) - start
+                            elems = clazz[start:start+offset]
+                            if len(elems) == 1 and len(clazz) > 1:
+                                elems.extend(clazz[:1])
+                            anchorPositivesCurrent = np.asarray([p for p in itertools.combinations(elems, 2)], dtype=np.int32)
+                            if len(anchorPositivesCurrent) + currentNAnchorPositives > self.batchSize:
+                                anchorPositives.extend(anchorPositivesCurrent[:int(self.batchSize-currentNAnchorPositives)])
+                                rest.extend(anchorPositivesCurrent[int(self.batchSize-currentNAnchorPositives):])
+                                classOfRest = classPointer
+                                currentNAnchorPositives = self.batchSize
+                            else:
+                                anchorPositives.extend(anchorPositivesCurrent)
+                                currentNAnchorPositives += len(anchorPositivesCurrent)
+                            #setup array with negatives
+                            toRemoveFromNegatives.extend(range(imageIdxRanges[clazz[0]][0], imageIdxRanges[clazz[0]][1]+1))
 
-                imageIdxOffset += len(pData)
-    
-                # collect data and labels                
-                data = data + pData
-                            
-                # move to next class
-                classId += 1
-            # shuffle positive pairs for more stable training 
-            np.random.shuffle(classes) 
-                           
-            # save data to class attributes                
-            self.data = np.transpose(np.asarray(data), (0,3,1,2))
-            self.classes = classes
-            self.imageIdxRanges = imageIdxRanges
-                
-            # save data to disk for faster load on the next call
-            np.save('{:s}/data.npy'.format(path), self.data)
-            np.save('{:s}/classes.npy'.format(path), self.classes)
-            np.save('{:s}/imageIdxRanges.npy'.format(path), self.imageIdxRanges)
-        
+                if classPointer == len(classes)-1:
+                    classPointer = 0
+                    if not foundInLoop:
+                        fill = True
+                        loops = 0
+                    else:
+                        loops += 1
+                    foundInLoop = False
+                else:
+                    classPointer += 1
+
+            # ensure we have the correct batchsize
+            assert currentNAnchorPositives == self.batchSize
+
+            negativeCands = [x for x in range(0, len(imageIdxRanges)) if x not in toRemoveFromNegatives]  
+
+            # fill negativeCands
+            if len(negativeCands) > 0 and len(anchorPositives) > len(negativeCands):
+                negativeCands = np.repeat(negativeCands, math.ceil(float(len(anchorPositives)) / len(negativeCands)))
+
+            if len(anchorPositives) <= len(negativeCands):
+                np.random.shuffle(negativeCands) 
+                negativeSelection = negativeCands[:int(len(anchorPositives))]
+                posData1.extend([x[0] for x in anchorPositives])
+                posData2.extend([x[1] for x in anchorPositives])
+                posData3.extend(negativeSelection)
+            else:
+                print "not enough negatives for current batch, skipping..."
+
+            currentNAnchorPositives = 0
+            anchorPositives = []
+            toRemoveFromNegatives = []
+
+            if fill:
+                run = False
+
+        assert (len(posData1) == len(posData2))
+        assert (len(posData1) == len(posData3))
+
+        self.posData1 = posData1;
+        self.posData2 = posData2;
+        self.posData3 = posData3;
+
     # Prepares the next batch for the given data
     # return: (netData, netLabels)
     def getNextClassificationBatch(self):
@@ -114,67 +195,32 @@ class NetDataset:
     # return: (netData, netLabels)
     def getNextVerficationBatch(self):
 
-        currentNAnchorPositives = 0;
-        anchorPositives = []
+        start = self.batchCount * self.batchSize
+        if start+self.batchSize >= len(self.posData1):
+            start = 0
+            self.epoch += 1
+            self.batchCount = 0
+        else:
+            self.batchCount += 1
 
-        toRemoveFromNegatives = []
-
-        while (currentNAnchorPositives < self.batchSize):
-            clazz = self.classes[self.classPointer]
-
-            elems = []
-            if self.facesPerIdentity != 0:
-                start = self.loops * self.facesPerIdentity % len(clazz)
-                offset = start + self.facesPerIdentity - 1 if start + self.facesPerIdentity - 1 < len(clazz) else start + self.facesPerIdentity - 1 - len(clazz)
-                if (start > offset):
-                    elems.extend(clazz[start:len(clazz)])
-                    elems.extend(clazz[0:offset+1])
-                else:
-                    if self.facesPerIdentity < len(clazz):
-                        elems = clazz[start:offset+1]
-                    else:
-                        elems = clazz
-
-            #np.random.shuffle(elems) 
-            anchorPositivesCurrent = np.asarray([p for p in itertools.combinations(elems, 2)], dtype=np.int32)
-
-            anchorPositives.extend(anchorPositivesCurrent)
-            currentNAnchorPositives += len(anchorPositivesCurrent)
-
-            #setup array with negatives
-            toRemoveFromNegatives.extend(range(self.imageIdxRanges[clazz[0]][0], self.imageIdxRanges[clazz[0]][1]+1))
-
-            if self.classPointer == len(self.classes)-1:
-                self.classPointer = 0
-                self.loops += 1
-            else:
-                self.classPointer += 1
-
-        # ensure we have the correct batchsize
-        currentNAnchorPositives = self.batchSize
-        anchorPositives = anchorPositives[:int(self.batchSize)]
-
-        negativeCands = [x for x in range(0, len(self.imageIdxRanges)) if x not in toRemoveFromNegatives]  
-
-        np.random.shuffle(negativeCands) 
-        nNegatives = math.ceil(len(anchorPositives) * self.nNegativeScale)
-        nNegatives = nNegatives if nNegatives < len(negativeCands) else len(negativeCands)
-        negativeSelection = negativeCands[:int(nNegatives)] # Todo(ms): crash if we dont have enough negatives, should start from the beginning
-
-        posData1 = self.data[[x[0] for x in anchorPositives]]
-        posData2 = self.data[[x[1] for x in anchorPositives]]
-        posData3 = self.data[negativeSelection]
+        posData1 = self.data[self.posData1[start:start+self.batchSize]]
+        posData2 = self.data[self.posData2[start:start+self.batchSize]]
+        posData3 = self.data[self.posData3[start:start+self.batchSize]]
 
         # combine data
         imgData = np.concatenate((posData1, posData2, posData3), axis=1)
-                    
+            
         # data augmentation
         netData = np.zeros((imgData.shape[0], imgData.shape[1], self.targetSize, self.targetSize), dtype=np.float32)
         for f in range(netData.shape[0]):
             for c in range(netData.shape[1]):
                 netData[f,c,:,:] = self.augmentImage(imgData[f,c,:,:])
                         
-        return (netData, np.ones((currentNAnchorPositives), dtype=np.float32))   
+        if (self.printStatus):
+            print('{:s} - Starting epoch {:d}'.format(str(datetime.datetime.now()).split('.')[0], self.epoch))
+
+        assert len(netData) == self.batchSize
+        return (netData, np.ones((self.batchSize), dtype=np.float32))   
 
     #####################    
     ### private methods

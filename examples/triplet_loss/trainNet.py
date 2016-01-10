@@ -45,7 +45,7 @@ def plotStats(trainLoss, testAcc, figure=None):
 # parameters
 solverDef = 'lrfacenet-solver-32.prototxt'
 
-gpu = True
+gpu = False
 imgDim = 32  # width and height of image
 
 nTrainIter = 50000
@@ -127,8 +127,7 @@ for trainIter in range(nTrainIter+1):
                 
         # testing with memory interface
         # collect test results
-        testDataset.classPointer = 0
-        testDataset.loops = 0
+        testDataset.batchCount = 0
         for i in range(nTestBatches):
             testNetData, testNetLabels = testDataset.getNextVerficationBatch()
             solver.test_nets[0].set_input_arrays(testNetData, testNetLabels)
