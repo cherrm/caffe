@@ -288,46 +288,22 @@ protected:
 	/// @copydoc MaxMarginLossLayer
 	virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 		const vector<Blob<Dtype>*>& top);
-	/*virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
-		const vector<Blob<Dtype>*>& top);*/
+	virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+		const vector<Blob<Dtype>*>& top);
 
-	/**
-	* @brief Computes the max margin hinge loss error gradient w.r.t. the inputs.
-	*
-	* Computes the gradients with respect to the two input vectors (bottom[0] and
-	* bottom[1]), but not the similarity label (bottom[2]).
-	*
-	* @param top output Blob vector (length 1), providing the error gradient with
-	*      respect to the outputs
-	*   -# @f$ (1 \times 1 \times 1 \times 1) @f$
-	*      This Blob's diff will simply contain the loss_weight* @f$ \lambda @f$,
-	*      as @f$ \lambda @f$ is the coefficient of this layer's output
-	*      @f$\ell_i@f$ in the overall Net loss
-	*      @f$ E = \lambda_i \ell_i + \mbox{other loss terms}@f$; hence
-	*      @f$ \frac{\partial E}{\partial \ell_i} = \lambda_i @f$.
-	*      (*Assuming that this top Blob is not used as a bottom (input) by any
-	*      other layer of the Net.)
-	* @param propagate_down see Layer::Backward.
-	* @param bottom input Blob vector (length 2)
-	*   -# @f$ (N \times C \times 1 \times 1) @f$
-	*      the features @f$a@f$; Backward fills their diff with
-	*      gradients if propagate_down[0]
-	*   -# @f$ (N \times C \times 1 \times 1) @f$
-	*      the features @f$b@f$; Backward fills their diff with gradients if
-	*      propagate_down[1]
-	*/
+
 	virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
 		const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
-	// TODO: CUDA implementation
-	/*virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
-		const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);*/
+	virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
+		const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
 	Blob<Dtype> diff_;  // cached for backward pass
 	Blob<Dtype> dist_sq_;  // cached for backward pass
 	Blob<Dtype> diff_sq_;  // tmp storage for gpu forward pass
 	Blob<Dtype> summer_vec_;  // tmp storage for gpu forward pass
 	Dtype b;
+    Dtype* gpuB;
 	Dtype c;
 };
 
