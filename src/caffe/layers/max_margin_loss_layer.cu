@@ -44,7 +44,6 @@ void MaxMarginLossLayer<Dtype>::Forward_gpu(
 	}
 	loss = loss / static_cast<Dtype>(bottom[0]->num());
 	top[0]->mutable_cpu_data()[0] = loss;
-	std::cout << "Loss: " << loss << std::endl;
 }
 
 template <typename Dtype>
@@ -86,15 +85,12 @@ void MaxMarginLossLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
 			const Dtype alpha = sign * top[0]->cpu_diff()[0] /
 					static_cast<Dtype>(bottom[0]->num());
 			// NOLINT_NEXT_LINE(whitespace/operators)
-			std::cout << "Iter: " << i << std::endl;
 			CLLBackward<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
 					count, channels, margin, gpuB, c, alpha,
 					bottom[2]->gpu_data(),  // pair similarity 0 or 1
 					diff_.gpu_data(),  // the cached eltwise difference between a and b
 					dist_sq_.gpu_data(),  // the cached square distance between a and b
 					bottom[i]->mutable_gpu_diff());
-			cudaMemcpy(&b, gpuB, sizeof(Dtype), cudaMemcpyDeviceToHost);
-			std::cout << "B: " << b << std::endl;
 			CUDA_POST_KERNEL_CHECK;
 		}
 	}
