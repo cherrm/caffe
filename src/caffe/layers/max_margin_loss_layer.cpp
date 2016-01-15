@@ -22,8 +22,10 @@ void MaxMarginLossLayer<Dtype>::LayerSetUp(
 	for (int i = 0; i < bottom[0]->channels(); ++i)
 		summer_vec_.mutable_cpu_data()[i] = Dtype(1);
 	b = this->layer_param_.max_margin_loss_param().b();
+#ifndef CPU_ONLY
 	cudaMalloc((void**)&gpuB, sizeof(Dtype));
 	cudaMemcpy(gpuB, &b, sizeof(Dtype), cudaMemcpyHostToDevice);
+#endif
 	c = this->layer_param_.max_margin_loss_param().c();
 }
 
@@ -61,7 +63,6 @@ template <typename Dtype>
 void MaxMarginLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 		const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
 	Dtype margin = this->layer_param_.max_margin_loss_param().margin();
-    int similar = 0; int dissimilar = 0;
 	for (int i = 0; i < 2; ++i) {
 		if (propagate_down[i]) {
 			const Dtype sign = (i == 0) ? 1 : -1;
